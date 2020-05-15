@@ -7,6 +7,7 @@ import re
 import glob
 import json
 
+# Set up args
 parser = argparse.ArgumentParser(description="Extracts assets from hashed format")
 parser.add_argument("mcfolder",
                     help="Minecraft data location - must contain assets/indexes and assets/objects")
@@ -23,6 +24,7 @@ verbosity.add_argument("-v", "--verbose", dest="debug", action="count",
 verbosity.add_argument("-q", "--quiet", dest="debug", action="store_const",
                        const=-1, help="Only output errors, not warnings")
 
+# Functions for debug levels
 def printdebug(level, *text):
     if DEBUG >= level:
         print(*text)
@@ -30,10 +32,12 @@ def printwarn(*text):
     if DEBUG >= 0:
         print(*text, file=sys.stderr)
 
+# Function to fully expand a path
 def expandpath(path):
     return(os.path.abspath(os.path.expandvars(os.path.expanduser(path))))
 
 if __name__ == "__main__":
+    # Parse args
     args = parser.parse_args()
 
     mcfolder = args.mcfolder
@@ -45,29 +49,29 @@ if __name__ == "__main__":
     mcfolder = expandpath(mcfolder)
     if not os.path.exists(mcfolder):
         raise OSError(f"Folder {mcfolder} does not exist")
-    if not os.path.exists(f"{mcfolder}/assets"):
+    if not os.path.exists(os.path.join(mcfolder, "assets")):
         raise OSError(f"Folder {mcfolder}/assets does not exist")
-    if not os.path.exists(f"{mcfolder}/assets/objects"):
+    if not os.path.exists(os.path.join(mcfolder, "assets", "objects")):
         raise OSError(f"Folder {mcfolder}/assets/objects does not exist")
 
     if tablename.lower() == "latest":
-        if not os.path.exists(f"{mcfolder}/assets/indexes"):
+        if not os.path.exists(os.path.join(mcfolder, "assets", "indexes")):
             raise OSError(f"Folder {mcfolder}/assets/indexes does not exist")
-        g = glob.glob(f"{mcfolder}/assets/indexes/*.json")
+        g = glob.glob(os.path.join(mcfolder, "assets", "indexes", "*.json"))
         new_g = []
         for i in g:
-            try: new_g.append(list(map(int, os.path.abspath(i).split("\\")[-1].split(".")[:-1])))
+            try: new_g.append(list(map(int, os.path.abspath(i).split(os.path.sep)[-1].split(".")[:-1])))
             except ValueError: continue
         try:
             i = max(new_g)
         except ValueError:
-            raise OSError("No index tables") 
+            raise OSError("No index tables")
         i = ".".join(map(str, i))
         table_json = f"{mcfolder}/assets/indexes/{i}.json"
-    elif os.path.exists(expandpath(f"{mcfolder}/assets/indexes/{tablename}.json")):
-        table_json = expandpath(f"{mcfolder}/assets/indexes/{tablename}.json")
-    elif os.path.exists(expandpath(f"{mcfolder}/assets/indexes/{tablename}")):
-        table_json = expandpath(f"{mcfolder}/assets/indexes/{tablename}")
+    elif os.path.exists(expandpath(os.path.join(mcfolder, "assets/indexes", f"{tablename}.json"))):
+        table_json = expandpath(os.path.join(mcfolder, "assets/indexes", f"{tablename}.json"))
+    elif os.path.exists(expandpath(os.path.join(mcfolder, "assets", "indexes", tablename))):
+        table_json = expandpath(os.path.join(mcfolder, "assets", "indexes", tablename))
     elif os.path.exists(expandpath(tablename)):
         table_json = expandpath(tablename)
     else:
@@ -100,19 +104,19 @@ if __name__ == "__main__":
             printdebug(2, f"Matched {k}")
             h = v["hash"]
             printdebug(2, f"Reading hash {h}")
-            if os.path.exists(f"{mcfolder}/assets/objects/{h[:2]}/{h}"):
-                with open(f"{mcfolder}/assets/objects/{h[:2]}/{h}", mode="rb") as f:
+            if os.path.exists(os.path.join(mcfolder, "assets/objects", h[:2], h)):
+                with open(os.path.join(mcfolder, "assets/objects", h[:2], h), mode="rb") as f:
                     data = f.read()
                 printdebug(3, f"Read data")
-                if not os.path.exists(f"{outputfolder}/{os.path.split(k)[0]}"):
-                    os.makedirs(f"{outputfolder}/{os.path.split(k)[0]}")
-                if os.path.exists(f"{outputfolder}/{k}"):
-                    printwarn(f"{outputfolder}/{k} already exists - overwriting")
-                with open(f"{outputfolder}/{k}", mode="wb") as f:
+                if not os.path.exists(os.path.join(outputfolder, os.path.split(k)[0])):
+                    os.makedirs(os.path.join(outputfolder, os.path.split(k)[0]))
+                if os.path.exists(os.path.join(outputfolder, k)):
+                    printwarn(f"{os.path.join(outputfolder, k)} already exists - overwriting")
+                with open(os.path.join(outputfolder, k), mode="wb") as f:
                     f.write(data)
                 printdebug(3, f"Wrote data")
             else:
-                printwarn("Can't find hash {h}")
+                printwarn(f"Can't find hash {h}")
         else:
             printdebug(3, f"Failed to match {k}")
     printdebug(1, "Finished write")
